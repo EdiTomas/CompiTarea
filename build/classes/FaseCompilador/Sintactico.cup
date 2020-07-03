@@ -1,0 +1,284 @@
+package FaseCompilador;
+import java_cup.runtime.Symbol;
+import java.util.ArrayList;
+import Arbol.Nodo;
+parser code
+{:
+      public static ArrayList<ErrorParser> ErrorSintactico = new ArrayList();
+      public int cont = 0;
+      public static  Nodo padre;
+       
+           
+  /************-----------------Metodo al que se llama automáticamente ante algún error sintactico.--------------------*/
+            
+     public void syntax_error(Symbol s)
+    {
+          try{
+                    System.err.println("Error Sintactico En la linea" + (s.left+1) +" Columna "+(s.right+1)+ ". Identificador "
+                    +  s.value.toString()   + " no reconocido1." );
+                    int columna = s.right;
+                    int fila = s.left;
+                    String lexema = s.value.toString();
+                    ErrorParser datos = new ErrorParser("Error Sintactico",lexema,fila, columna,"Se esperaba caracter");
+                    ErrorSintactico.add(datos);
+             }
+                    catch(Exception error){}
+    }
+
+/**----------------Metodo al que se llama en el momento en que ya no es posible una recuperación de errores.---------------------*/
+public void unrecovered_syntax_error(Symbol s) throws java.lang.Exception
+    {
+                try{
+                     
+                    System.err.println("Error Sintactico En la linea" + (s.left+1) +" Columna "+(s.right+1)+ ". Identificador "
+                    +  s.value.toString()   + " no reconocido1." );
+                     int columna = s.right;
+                     int fila = s.left;
+                     String lexema = s.value.toString();
+                     ErrorParser datos = new ErrorParser("Error Sintactico",lexema,fila, columna,"Se esperaba caracter");
+                     ErrorSintactico.add(datos);
+                    } catch(Exception er){}
+   }
+
+
+:}
+
+//--------- Se declaran los todos terminales reservados de jflex------------------------------------------------------
+
+terminal String print ;
+terminal String tipo_entero ;
+terminal String tipo_doble ;
+terminal String tipo_cadena ;
+terminal String puntoycoma ;
+terminal String igual ;
+terminal String pa_open ;
+terminal String pa_close ;
+terminal String llaveabierta ;
+terminal String llavecerrada ;
+terminal String id ;
+terminal String cadena ;
+terminal String entero ;
+terminal String decimal ;
+terminal String repetir ;
+terminal String mas ;
+terminal String menos ;
+terminal String por ;
+terminal String div;
+terminal String potencia ;
+terminal String umenos;
+//********************************************************* Aquí están los no terminales *************************************
+
+non terminal  S;
+non terminal Nodo BLOQUE;
+non terminal Nodo L_INSTRUCCIONES;
+non terminal Nodo L_INSTRUCCION;
+non terminal Nodo IMPRIMIR;
+non terminal Nodo DECLARACION;
+non terminal Nodo TIPO;
+non terminal Nodo REPETIR;
+non terminal Nodo E;
+
+//---------------------------------------------------> precedencia de menor a mayor
+   precedence  left  mas, menos;
+   precedence  left  por, div ;
+   precedence  left  potencia ;
+   precedence left  umenos; 
+
+
+//-------------------------------Formato BNF----------------------------------------------------------------
+start with S; // start with sirve para indicarle al parser con que produccion empezar
+
+S ::=  BLOQUE:a
+       {:
+           Nodo nd = new Nodo("S","",parser.cont);
+           nd.AddHijos(a);
+           parser.padre = nd;
+       :}
+;
+BLOQUE ::= llaveabierta llavecerrada
+              {:
+                    RESULT =  new Nodo("BLOQUE","",parser.cont);
+                    parser.cont++; 
+              :}
+           |llaveabierta L_INSTRUCCIONES:a llavecerrada
+               {:
+                    RESULT =  new Nodo("BLOQUE","",parser.cont);
+                    parser.cont++; 
+                    RESULT.AddHijos(a);   
+               :} 
+;   
+L_INSTRUCCIONES ::= L_INSTRUCCIONES:a L_INSTRUCCION:b
+                     {:
+                              RESULT = new Nodo("L_INSTRUCCIONES","",parser.cont);
+                              parser.cont++;
+                              RESULT.AddHijos(a);
+                              RESULT.AddHijos(b);
+                     :}
+                   |L_INSTRUCCION:i
+                     {:
+                              RESULT = new Nodo("L_INSTRUCCIONES","",parser.cont);
+                              parser.cont++;
+                              RESULT.AddHijos(i);
+                     :}
+;
+L_INSTRUCCION ::=  BLOQUE:a
+                   {:   
+                    RESULT=a;
+                   :}
+                | DECLARACION:a
+                  {:   
+                    RESULT=a;
+                  :}
+                | IMPRIMIR:a
+                  {:   
+                    RESULT=a;
+                  :} 
+                | REPETIR:a
+                  {:   
+                    RESULT=a;
+                  :}
+;
+REPETIR ::= repetir pa_open E:a pa_close BLOQUE:b
+{:
+         RESULT = new Nodo("REPETIR","",parser.cont);
+         parser.cont++;
+         RESULT.AddHijos(a);
+         RESULT.AddHijos(b); 
+:}
+;
+IMPRIMIR ::= print  pa_open E:a pa_close puntoycoma
+{:
+         RESULT = new Nodo("IMPRIMIR","",parser.cont);
+         parser.cont++;
+         RESULT.AddHijos(a);
+:}
+;
+DECLARACION ::= TIPO:a id:b igual E:c puntoycoma
+                {:
+                      RESULT = new Nodo("DECLARACION","",parser.cont);
+                      parser.cont++;
+                      Nodo id = new Nodo("id",b,parser.cont,bright,bleft);
+                      parser.cont++;         
+                      RESULT.AddHijos(a);
+                      RESULT.AddHijos(id);
+                      RESULT.AddHijos(c);
+                :}
+;
+
+
+
+
+TIPO ::=   tipo_entero:entero
+           {:
+                  RESULT = new Nodo("int",entero,parser.cont,enteroright,enteroleft); 
+                  parser.cont++;
+          :}
+         | tipo_doble:decimal
+           {:
+                  RESULT = new Nodo("double",decimal,parser.cont,decimalright,decimalleft); 
+                  parser.cont++;
+          :}
+         | tipo_cadena:cadena
+          {:
+                  RESULT = new Nodo("string",cadena,parser.cont,cadenaright,cadenaleft); 
+                  parser.cont++;
+          :} 
+;
+
+E  ::=   E:a mas:b E:c
+           {:
+                   //   RESULT = new Nodo("E","",parser.cont);
+                   //   parser.cont++;   
+                   // RESULT.AddHijos(mas);
+                   
+                      RESULT = new Nodo("mas",b,parser.cont,bright,bleft);
+                      parser.cont++;         
+                      RESULT.AddHijos(a);
+                      RESULT.AddHijos(c);
+           :}
+        |E:a menos:b E:c
+           {:
+                      RESULT  = new Nodo("menos",b,parser.cont,bright,bleft);
+                      parser.cont++;         
+                      RESULT.AddHijos(a);
+                      RESULT.AddHijos(c);
+           :}
+        |E:a por:b E:c
+           {:
+                      RESULT = new Nodo("por",b,parser.cont,bright,bleft);
+                      parser.cont++;         
+                      RESULT.AddHijos(a);
+                      RESULT.AddHijos(c);
+           :}
+        |E:a div:b E:c
+           {:
+                      RESULT= new Nodo("div",b,parser.cont,bright,bleft);
+                      parser.cont++;         
+                      RESULT.AddHijos(a);
+                      RESULT.AddHijos(c);
+           :}
+        |E:a potencia:b E:c
+           {:
+                      RESULT= new Nodo("potencia",b,parser.cont,bright,bleft);
+                      parser.cont++;         
+                      RESULT.AddHijos(a);
+                      RESULT.AddHijos(c);
+           :}
+        | pa_open  E:a pa_close
+           {:
+               RESULT = a;
+           :}
+        |  menos:a E:b 
+           {:
+                      RESULT= new Nodo("umenos","",parser.cont,aright,aleft);
+                      parser.cont++;
+                      RESULT.AddHijos(b);
+           :}%prec umenos
+           
+        | entero:val
+            {:
+                 RESULT = new Nodo("entero",val,parser.cont,valright,valleft); 
+                 parser.cont++;
+            :}
+
+              
+        | decimal:val
+           {:
+                 RESULT = new Nodo("decimal",val,parser.cont,valright,valleft); 
+                 parser.cont++;
+           :}
+        | cadena:cad
+          {:
+                 RESULT = new Nodo("cadena",cad,parser.cont,cadright,cadleft); 
+                 parser.cont++;
+          :} 
+        | id:id
+           {:
+                    RESULT = new Nodo("id",id,parser.cont,idright,idleft); 
+                    parser.cont++;
+           :}
+;
+
+
+
+               
+
+
+/*
+               RESULT = new Nodo("E","",parser.cont);
+               parser.cont++;
+               Nodo nd = new Nodo("id",id,parser.cont,idright,idleft); 
+               parser.cont++;
+               RESULT.AddHijos(nd);
+*/
+
+
+
+
+
+
+
+
+
+
+
